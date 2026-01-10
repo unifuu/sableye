@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import sys
 import logging
 from pathlib import Path
@@ -12,7 +11,7 @@ from rich.prompt import Prompt
 from rich import print as rprint
 from dotenv import load_dotenv
 
-from src.agent import Sableye
+from src.agent import SableyeAgent
 from src.config import Config
 
 # Load environment variables
@@ -40,7 +39,7 @@ def print_banner():
     ║     Sableye     ║
     ╚═════════════════╝
     """
-    console.print(banner, style="bold cyan")
+    console.print(banner, style="bold purple")
 
 
 def print_help():
@@ -52,7 +51,9 @@ def print_help():
     - `/help` - Show this help message
     - `/recent [days]` - Show recent entries (default: 7 days)
     - `/stats` - Show vault statistics
+    - `/memory` - Show conversation history
     - `/clear` - Clear the screen
+    - `/reset` - Reset conversation memory
     - `/exit` or `/quit` - Exit the application
     
     **Example Queries:**
@@ -61,11 +62,14 @@ def print_help():
     - Am I mentally peaceful recently?
     - What am I anxious about?
     - Show me entries about [topic]
+    
+    **Tip:** The agent remembers your conversation, so you can ask follow-up 
+    questions without repeating context!
     """
     console.print(Panel(Markdown(help_text), title="Help", border_style="yellow"))
 
 
-def print_stats(agent: Sableye):
+def print_stats(agent: SableyeAgent):
     """Print vault statistics"""
     try:
         if not agent.reader:
@@ -91,18 +95,18 @@ def print_stats(agent: Sableye):
 
 
 @click.group(invoke_without_command=True)
-@click.option('--config', '-c', default='config.yaml', help='Path to config file')
+@click.option('--config', '-c', default=None, help='Path to config file')
 @click.option('--verbose', '-v', is_flag=True, help='Enable verbose logging')
 @click.pass_context
 def cli(ctx, config: str, verbose: bool):
-    """Sableye"""
+    """SableyeAgent - AI-powered personal knowledge assistant"""
     if ctx.invoked_subcommand is None:
         # Default to chat mode
         ctx.invoke(chat, config=config, verbose=verbose)
 
 
 @cli.command()
-@click.option('--config', '-c', default='config.yaml', help='Path to config file')
+@click.option('--config', '-c', default=None, help='Path to config file')
 @click.option('--verbose', '-v', is_flag=True, help='Enable verbose logging')
 @click.option('--days', '-d', type=int, help='Number of days to load')
 def chat(config: str, verbose: bool, days: Optional[int]):
@@ -124,7 +128,7 @@ def chat(config: str, verbose: bool, days: Optional[int]):
         
         # Initialize agent
         console.print("[cyan]Initializing agent...[/cyan]")
-        agent = Sableye(cfg)
+        agent = SableyeAgent(cfg)
         
         # Load notes
         with console.status("[cyan]Loading notes from Obsidian vault...[/cyan]"):
@@ -155,7 +159,7 @@ def chat(config: str, verbose: bool, days: Optional[int]):
                     command = user_input.lower().split()[0]
                     
                     if command in ['/exit', '/quit', '/q']:
-                        console.print("\n[yellow]Goodbye! Take care of yourself 💚[/yellow]")
+                        console.print("\n[purple]Goodbye! Take care of yourself 💜[/purple]")
                         break
                     
                     elif command == '/help':
@@ -169,6 +173,20 @@ def chat(config: str, verbose: bool, days: Optional[int]):
                     elif command == '/clear':
                         console.clear()
                         print_banner()
+                        continue
+                    
+                    elif command == '/reset':
+                        agent.clear_memory()
+                        console.print("[green]✓ Conversation memory cleared[/green]")
+                        continue
+                    
+                    elif command == '/memory':
+                        memory_summary = agent.get_memory_summary()
+                        console.print(Panel(
+                            memory_summary,
+                            title="Conversation History",
+                            border_style="cyan"
+                        ))
                         continue
                     
                     elif command == '/recent':
@@ -208,7 +226,7 @@ def chat(config: str, verbose: bool, days: Optional[int]):
 
 
 @cli.command()
-@click.option('--config', '-c', default='config.yaml', help='Path to config file')
+@click.option('--config', '-c', default=None, help='Path to config file')
 def validate(config: str):
     """Validate configuration"""
     try:
@@ -236,7 +254,7 @@ def validate(config: str):
 
 @cli.command()
 @click.argument('query')
-@click.option('--config', '-c', default='config.yaml', help='Path to config file')
+@click.option('--config', '-c', default=None, help='Path to config file')
 @click.option('--days', '-d', type=int, help='Number of days to load')
 def ask(query: str, config: str, days: Optional[int]):
     """Ask a single question and exit"""
@@ -247,7 +265,7 @@ def ask(query: str, config: str, days: Optional[int]):
         
         # Initialize agent
         with console.status("[cyan]Initializing...[/cyan]"):
-            agent = Sableye(cfg)
+            agent = SableyeAgent(cfg)
             agent.load_notes(days=days)
             agent.initialize()
         

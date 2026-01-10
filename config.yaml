@@ -1,0 +1,31 @@
+# ============================================================================
+# File: config.yaml
+# ============================================================================
+# Obsidian Mental Health Agent Configuration
+
+# Model configuration
+model:
+  type: "ollama" # Options: "openai" or "ollama"
+  name:
+    "qwen3:4b-instruct" # For OpenAI: "gpt-4", "gpt-3.5-turbo"
+    # For Ollama: "llama2", "mistral", "mixtral", etc.
+  temperature: 0.7
+  max_tokens: 2000
+  # API key (can also be set via OPENAI_API_KEY environment variable)
+  # api_key: "sk-your-key-here"
+
+  # Ollama configuration (only needed if using Ollama)
+  base_url: "http://localhost:11434"
+
+# Obsidian vault configuration
+vault:
+  path: "" # Required: path to your Obsidian vault
+  load_days: 90 # Load notes from last N days (null for all notes)
+  chunk_size: 300 # Size of text chunks for processing
+  chunk_overlap: 50 # Overlap between chunks
+
+# Agent configuration
+agent:
+  verbose: false # Enable verbose logging
+  max_iterations: 5 # Maximum number of tool iterations
+  search_results_limit: 5 # Number of results to return from searches
