@@ -1,11 +1,12 @@
 import logging
 from typing import Optional
-from langchain.agents import create_agent
+from langchain_classic.agents import AgentExecutor, create_tool_calling_agent
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
+from langchain_classic.memory import ConversationBufferMemory
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 
 from .reader import ObsidianReader
@@ -28,6 +29,7 @@ class SableyeAgent:
         self.chat_history = []
         
         self._initialize_models()
+        self._initialize_memory()
     
     def _initialize_models(self):
         """Initialize LLM and embeddings"""
@@ -56,6 +58,15 @@ class SableyeAgent:
         
         else:
             raise ValueError(f"Unsupported model type: {self.config.model.type}")
+
+    def _initialize_memory(self):
+        """Initialize conversation memory"""
+        self.memory = ConversationBufferMemory(
+            memory_key="chat_history",
+            return_messages=True,
+            output_key="output"
+        )
+        logger.info("Initialized conversation memory")
     
     def load_notes(self, days: Optional[int] = None):
         """Load notes into vector store"""
@@ -112,67 +123,52 @@ class SableyeAgent:
             MessagesPlaceholder(variable_name="agent_scratchpad"),
         ])
         
-        # Create agent using the new API
-        self.agent = create_agent(
-            model=self.llm,
+        # Create agent
+        agent = create_tool_calling_agent(self.llm, tools, prompt)
+        self.agent_executor = AgentExecutor(
+            agent=agent,
             tools=tools,
-            system_prompt=self._get_system_prompt()
+            memory=self.memory,
+            verbose=self.config.agent.verbose,
+            max_iterations=self.config.agent.max_iterations,
+            handle_parsing_errors=True,
+            return_intermediate_steps=False
         )
         
-        logger.info("Agent initialized successfully")
+        logger.info("Agent initialized successfully with conversation memory")
     
     def chat(self, message: str) -> str:
         """Chat with the agent"""
-        if not self.agent:
+        if not self.agent_executor:
             raise ValueError("Agent not initialized. Call initialize() first.")
         
         try:
-            # Add message to chat history
-            self.chat_history.append({"role": "user", "content": message})
-            
-            # Create messages list with history
-            messages = []
-            for msg in self.chat_history[-10:]:  # Keep last 10 messages
-                messages.append(msg)
-            
-            response = self.agent.invoke({"messages": messages})
-            
-            # Extract the last message content from the response
-            if "messages" in response and response["messages"]:
-                last_message = response["messages"][-1]
-                if hasattr(last_message, 'content'):
-                    response_content = last_message.content
-                elif isinstance(last_message, dict) and 'content' in last_message:
-                    response_content = last_message['content']
-                else:
-                    response_content = str(last_message)
-            else:
-                response_content = str(response)
-            
-            # Add response to chat history
-            self.chat_history.append({"role": "assistant", "content": response_content})
-            
-            return response_content
+            response = self.agent_executor.invoke({"input": message})
+            return response["output"]
         except Exception as e:
             logger.error(f"Error in chat: {e}")
-            import traceback
-            logger.error(f"Full traceback: {traceback.format_exc()}")
             return f"I encountered an error: {str(e)}"
     
     def clear_memory(self):
         """Clear conversation memory"""
-        self.chat_history = []
-        logger.info("Conversation memory cleared")
+        if self.memory:
+            self.memory.clear()
+            self.chat_history = []
+            logger.info("Conversation memory cleared")
     
     def get_memory_summary(self) -> str:
         """Get a summary of conversation history"""
-        if not self.chat_history:
+        if not self.memory:
             return "No conversation history"
         
-        summary = f"Conversation history ({len(self.chat_history)} messages):\n"
-        for msg in self.chat_history[-10:]:  # Last 10 messages
-            role = "User" if msg["role"] == "user" else "Agent"
-            content = msg["content"][:100] + "..." if len(msg["content"]) > 100 else msg["content"]
+        messages = self.memory.chat_memory.messages
+        if not messages:
+            return "No conversation history"
+        
+        summary = f"Conversation history ({len(messages)} messages):\n"
+        for msg in messages[-10:]:  # Last 10 messages
+            role = "User" if isinstance(msg, HumanMessage) else "Agent"
+            content = msg.content[:100] + "..." if len(msg.content) > 100 else msg.content
             summary += f"- {role}: {content}\n"
         
         return summary

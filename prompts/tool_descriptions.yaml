@@ -1,0 +1,30 @@
+# ============================================================================
+# File: prompts/tool_descriptions.yaml
+# ============================================================================
+
+search_notes:
+  name: "search_notes"
+  description: |
+    Search through journal entries and notes for specific information.
+    Input should be a search query about goals, activities, thoughts,
+    emotions, or any topic you want to find in the notes.
+
+get_recent_entries:
+  name: "get_recent_entries"
+  description: |
+    Get recent journal entries from the last N days.
+    Input should be a number representing days (e.g., '7' for last 7 days,
+    '30' for last 30 days).
+
+analyze_mood_patterns:
+  name: "analyze_mood_patterns"
+  description: |
+    Analyze mood and emotional patterns from journal entries.
+    Use this to understand mental state, emotional well-being,
+    and identify trends in emotions over time.
+
+find_goals:
+  name: "find_goals"
+  description: |
+    Search for goals, objectives, and aspirations mentioned in notes.
+    Use this to understand what the person is working towards or wants to achieve.
