@@ -7,10 +7,10 @@ import click
 from rich.console import Console
 from rich.panel import Panel
 from rich.markdown import Markdown
-from rich import print as rprint
 from dotenv import load_dotenv
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
+from prompt_toolkit.formatted_text import HTML
 
 from src.agent import SableyeAgent
 from src.config import Config
@@ -89,7 +89,7 @@ def print_stats(agent: SableyeAgent):
         - Model: {agent.config.model.type} ({agent.config.model.name})
         """
         
-        console.print(Panel(Markdown(stats), title="Statistics", border_style="purple"))
+        console.print(Panel(Markdown(stats), title="Statistics", border_style="green"))
     
     except Exception as e:
         console.print(f"[red]Error getting stats: {e}[/red]")
@@ -100,7 +100,6 @@ def print_stats(agent: SableyeAgent):
 @click.option('--verbose', '-v', is_flag=True, help='Enable verbose logging')
 @click.pass_context
 def cli(ctx, config: str, verbose: bool):
-    """SableyeAgent - AI-powered personal knowledge assistant"""
     if ctx.invoked_subcommand is None:
         # Default to chat mode
         ctx.invoke(chat, config=config, verbose=verbose)
@@ -154,7 +153,7 @@ def chat(config: str, verbose: bool, days: Optional[int]):
         while True:
             try:
                 # Get user input with full readline support
-                user_input = session.prompt("\n\033[1;34mYou:\033[0m ").strip()
+                user_input = session.prompt(HTML("\n<b><ansiblue>You:</ansiblue></b> ")).strip()
                 
                 if not user_input:
                     continue
@@ -212,8 +211,8 @@ def chat(config: str, verbose: bool, days: Optional[int]):
                     response = agent.chat(user_input)
                 
                 # Print response
-                console.print("\n[bold green]Agent[/bold green]:")
-                console.print(Panel(Markdown(response), border_style="purple"))
+                console.print("\n[bold blue]Sableye[/bold blue]:")
+                console.print(Panel(Markdown(response), border_style="green"))
             
             except KeyboardInterrupt:
                 console.print("\n\n[yellow]Interrupted. Type /exit to quit.[/yellow]")
@@ -279,7 +278,7 @@ def ask(query: str, config: str, days: Optional[int]):
             response = agent.chat(query)
         
         # Print response
-        console.print(Panel(Markdown(response), title="Response", border_style="purple"))
+        console.print(Panel(Markdown(response), title="Response", border_style="green"))
     
     except Exception as e:
         logger.error(f"Error: {e}", exc_info=True)
