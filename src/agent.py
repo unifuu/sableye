@@ -111,6 +111,7 @@ class SableyeAgent:
         agent_tools = AgentTools(
             vectorstore=self.vectorstore,
             reader=self.reader,
+            llm=self.llm,
             search_limit=self.config.agent.search_results_limit
         )
         tools = agent_tools.create_tools()

@@ -1,5 +1,8 @@
 import logging
-from typing import List, Callable
+import importlib
+import pkgutil
+from typing import List, Callable, Any
+from pathlib import Path
 from langchain_core.tools import Tool
 from langchain_community.vectorstores import FAISS
 
@@ -7,16 +10,16 @@ logger = logging.getLogger(__name__)
 
 
 class AgentTools:
-    """Collection of tools for the mental health agent"""
-    
-    def __init__(self, vectorstore: FAISS, reader, search_limit: int = 5):
+    def __init__(self, vectorstore: FAISS, reader, llm: Any, search_limit: int = 5):
         self.vectorstore = vectorstore
         self.reader = reader
+        self.llm = llm
         self.search_limit = search_limit
     
     def create_tools(self) -> List[Tool]:
         """Create all tools for the agent"""
-        return [
+        # Built-in tools
+        tools = [
             Tool(
                 name="search_notes",
                 func=self._search_notes,
@@ -53,6 +56,62 @@ class AgentTools:
                 )
             )
         ]
+        
+        # Load and add skills from skills/ folder
+        skill_tools = self._load_skills()
+        tools.extend(skill_tools)
+        
+        logger.info(f"Created {len(tools)} tools ({len(skill_tools)} from skills/)")
+        return tools
+    
+    def _load_skills(self) -> List[Tool]:
+        """Dynamically load skills from the skills/ folder."""
+        skills = []
+        
+        try:
+            # Get the skills directory path
+            current_dir = Path(__file__).parent
+            skills_dir = current_dir.parent / "skills"
+            
+            if not skills_dir.exists():
+                logger.warning(f"Skills directory not found at {skills_dir}")
+                return skills
+            
+            # Import skills package
+            import sys
+            if str(skills_dir.parent) not in sys.path:
+                sys.path.insert(0, str(skills_dir.parent))
+            
+            # Iterate through all Python files in skills/
+            for file_path in skills_dir.glob("*.py"):
+                if file_path.name.startswith("_"):
+                    continue  # Skip __init__.py and private modules
+                
+                module_name = file_path.stem
+                
+                try:
+                    # Import the skill module
+                    skill_module = importlib.import_module(f"skills.{module_name}")
+                    
+                    # Check if module has create_tool function
+                    if hasattr(skill_module, "create_tool"):
+                        tool = skill_module.create_tool(
+                            llm=self.llm,
+                            vectorstore=self.vectorstore,
+                            reader=self.reader
+                        )
+                        skills.append(tool)
+                        logger.info(f"Loaded skill: {module_name}")
+                    else:
+                        logger.warning(f"Skill {module_name} missing create_tool function")
+                        
+                except Exception as e:
+                    logger.error(f"Error loading skill {module_name}: {e}")
+            
+        except Exception as e:
+            logger.error(f"Error loading skills: {e}")
+        
+        return skills
     
     def _search_notes(self, query: str) -> str:
         """Search through journal entries and notes"""
