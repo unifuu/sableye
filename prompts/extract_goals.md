@@ -5,6 +5,7 @@ You are an AI assistant helping analyze personal journaling notes from Obsidian.
 ## Task
 
 Your task is to identify and extract **personal goals**, including:
+
 - Explicit goals (clearly stated intentions)
 - Implicit goals (repeated desires, concerns, or long-term aspirations)
 
@@ -26,9 +27,10 @@ The following are journaling notes written over time:
 Return a JSON object with the following structure:
 
 ```json
-{
+{{{{
   "goals": [
     "Example goal 1",
     "Example goal 2"
   ]
-}
+}}}}
+```

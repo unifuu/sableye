@@ -95,6 +95,11 @@ if prompt_file.exists():
 ## Available Skills
 
 - **extract_goals**: Intelligently extract personal goals from journal entries using LLM analysis
+- **extract_learnings**: Extract technical learnings, new concepts, and knowledge from development notes
+- **track_progress**: Track progress on specific goals or habits over time with timeline analysis
+- **ask_past_self**: Query your historical notes to find answers from past experiences
+- **energy_tracker**: Analyze energy levels and productivity patterns to optimize your schedule
+- **gaming_insights**: Analyze gaming habits, preferences, and their relationship to mood/productivity
 
 ## Best Practices
 

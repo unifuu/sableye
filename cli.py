@@ -7,9 +7,10 @@ import click
 from rich.console import Console
 from rich.panel import Panel
 from rich.markdown import Markdown
-from rich.prompt import Prompt
 from rich import print as rprint
 from dotenv import load_dotenv
+from prompt_toolkit import PromptSession
+from prompt_toolkit.history import FileHistory
 
 from src.agent import SableyeAgent
 from src.config import Config
@@ -88,7 +89,7 @@ def print_stats(agent: SableyeAgent):
         - Model: {agent.config.model.type} ({agent.config.model.name})
         """
         
-        console.print(Panel(Markdown(stats), title="Statistics", border_style="green"))
+        console.print(Panel(Markdown(stats), title="Statistics", border_style="purple"))
     
     except Exception as e:
         console.print(f"[red]Error getting stats: {e}[/red]")
@@ -146,10 +147,14 @@ def chat(config: str, verbose: bool, days: Optional[int]):
         # Chat loop
         console.print("\n[bold]Start chatting![/bold] (Type /help for commands, /exit to quit)\n")
         
+        # Create prompt session with history
+        history_file = Path.home() / ".sableye_history"
+        session = PromptSession(history=FileHistory(str(history_file)))
+        
         while True:
             try:
-                # Get user input
-                user_input = Prompt.ask("\n[bold blue]You[/bold blue]").strip()
+                # Get user input with full readline support
+                user_input = session.prompt("\n\033[1;34mYou:\033[0m ").strip()
                 
                 if not user_input:
                     continue
@@ -208,7 +213,7 @@ def chat(config: str, verbose: bool, days: Optional[int]):
                 
                 # Print response
                 console.print("\n[bold green]Agent[/bold green]:")
-                console.print(Panel(Markdown(response), border_style="green"))
+                console.print(Panel(Markdown(response), border_style="purple"))
             
             except KeyboardInterrupt:
                 console.print("\n\n[yellow]Interrupted. Type /exit to quit.[/yellow]")
@@ -274,7 +279,7 @@ def ask(query: str, config: str, days: Optional[int]):
             response = agent.chat(query)
         
         # Print response
-        console.print(Panel(Markdown(response), title="Response", border_style="green"))
+        console.print(Panel(Markdown(response), title="Response", border_style="purple"))
     
     except Exception as e:
         logger.error(f"Error: {e}", exc_info=True)
