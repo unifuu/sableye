@@ -1,5 +1,6 @@
 import logging
 from typing import Optional
+from pathlib import Path
 from langchain_classic.agents import AgentExecutor, create_tool_calling_agent
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 from langchain_openai import ChatOpenAI
@@ -17,7 +18,6 @@ logger = logging.getLogger(__name__)
 
 
 class SableyeAgent:
-    """AI agent for analyzing mental health and goals from Obsidian notes"""
     
     def __init__(self, config: Config):
         self.config = config
@@ -175,4 +175,37 @@ class SableyeAgent:
     
     def _get_system_prompt(self) -> str:
         """Get the system prompt for the agent"""
-        return ""
+        try:
+            # Locate prompts directory relative to this file
+            current_dir = Path(__file__).parent
+            # Assuming src/agent.py -> project_root/prompts
+            prompts_dir = current_dir.parent / "prompts"
+            
+            if not prompts_dir.exists():
+                logger.warning(f"Prompts directory not found at {prompts_dir}")
+                return ""
+
+            system_prompt_parts = []
+            
+            # 1. Load system_prompt.md first
+            main_prompt_path = prompts_dir / "system_prompt.md"
+            if main_prompt_path.exists():
+                system_prompt_parts.append(main_prompt_path.read_text(encoding='utf-8'))
+                logger.info(f"Loaded system prompt from {main_prompt_path}")
+            else:
+                logger.warning("system_prompt.md not found")
+
+            # 2. Load other markdown files
+            for file_path in sorted(prompts_dir.glob("*.md")):
+                if file_path.name == "system_prompt.md":
+                    continue
+                
+                content = file_path.read_text(encoding='utf-8')
+                system_prompt_parts.append(f"\n\n{content}")
+                logger.info(f"Loaded additional prompt from {file_path}")
+            
+            return "".join(system_prompt_parts)
+            
+        except Exception as e:
+            logger.error(f"Error loading system prompt: {e}")
+            return ""
